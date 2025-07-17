@@ -72,7 +72,24 @@ fixup_and_cleanup()
     # Rehide the background file
     SetFile -a V "${MOUNTPOINT}"/background.png
 
-    hdiutil detach "${MOUNTPOINT}"
+    # Retry up to 5 times, increasing wait each time
+    DETACHED=0
+    for i in 1 2 3 4 5; do
+        if hdiutil detach "${MOUNTPOINT}"; then
+            DETACHED=1
+            break
+        else
+            echo "hdiutil detach failed (attempt $i), resource busy. Retrying in $((i*5)) seconds..."
+            lsof "/Volumes/${MOUNT_NAME}" || true
+            sync || true
+            sleep $((i*5))
+        fi
+    done
+    if [ $DETACHED -eq 0 ]; then
+        echo "Error: Could not detach ${MOUNTPOINT} after 5 attempts."
+        exit 1
+    fi
+
     rm -r "${MOUNTPOINT}"
 
     #set it so the DMG autoopens on download/mount for supported platforms (x86)
