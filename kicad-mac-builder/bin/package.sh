@@ -19,11 +19,8 @@ cleanup() {
     echo "Making sure any mounts are unmounted."
     if [ -n "${MOUNTPOINT}" ]; then
         hdiutil detach "${MOUNTPOINT}" || true
-    fi
-
-    if [ -n "${MOUNT_NAME}" ]; then
-        hdiutil detach /Volumes/"${MOUNT_NAME}" || true
-        diskutil unmount /Volumes/"${MOUNT_NAME}" || true
+        diskutil unmount "${MOUNTPOINT}" || true
+        rm -rf "${MOUNTPOINT}" || true
     fi
 }
 trap cleanup EXIT
@@ -52,7 +49,7 @@ setup_dmg()
     # resize the template, and mount it
 
     if ! hdiutil resize -sectors "${DMG_SIZE}" "${TEMPLATE}"; then
-        hdiutil resize -limits kicadtemplate.dmg # TODO what is this? Does this work?
+        hdiutil resize -limits kicadtemplate.dmg # Debugging step, to see what the limits are.
         hdiutil resize -sectors 10167525 "${TEMPLATE}"
         hdiutil resize -limits kicadtemplate.dmg
         if ! hdiutil resize -sectors "${DMG_SIZE}" "${TEMPLATE}"; then
@@ -61,7 +58,8 @@ setup_dmg()
         fi
     fi
     diskutil unmount /Volumes/"${MOUNT_NAME}" || true
-    hdiutil attach "${TEMPLATE}" -noautoopen -mountpoint "${MOUNTPOINT}"
+    DEVICE=$(hdiutil attach "${TEMPLATE}" -noautoopen -nobrowse -mountpoint "${MOUNTPOINT}" | awk '/Apple_HFS/ {print $1}')
+    mdutil -i off "${MOUNTPOINT}" || true
 }
 
 
@@ -74,20 +72,28 @@ fixup_and_cleanup()
 
     # Retry up to 5 times, increasing wait each time
     DETACHED=0
+    sync
+    sleep 5
     for i in 1 2 3 4 5; do
-        if hdiutil detach "${MOUNTPOINT}"; then
+        if hdiutil detach "${DEVICE}"; then
             DETACHED=1
             break
         else
             echo "hdiutil detach failed (attempt $i), resource busy. Retrying in $((i*5)) seconds..."
-            lsof "/Volumes/${MOUNT_NAME}" || true
+            echo "Mounted volumes:"
+            mount | grep "${MOUNTPOINT}" || true
+            hdiutil info
+            lsof "${MOUNTPOINT}" || true
             sync || true
             sleep $((i*5))
         fi
     done
     if [ $DETACHED -eq 0 ]; then
         echo "Error: Could not detach ${MOUNTPOINT} after 5 attempts."
-        exit 1
+        hdiutil detach -force "${DEVICE}" || {
+            echo "Failed to force detach ${DEVICE}."
+            exit 1
+        }
     fi
 
     rm -r "${MOUNTPOINT}"
