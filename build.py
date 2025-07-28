@@ -362,7 +362,7 @@ def build(args, new_path):
     make_command = get_make_command(args)
     print("Running {}".format(" ".join(make_command)), flush=True)
     try:
-        subprocess.check_call(["taskpolicy", "--background", "no", "--"] + make_command, env=dict(os.environ, PATH=new_path))
+        subprocess.check_call(["taskpolicy", "-a"] + make_command, env=dict(os.environ, PATH=new_path))
     except subprocess.CalledProcessError:
         if args.retry_failed_build and args.jobs > 1:
             print("Error while running make.", flush=True)
@@ -373,7 +373,7 @@ def build(args, new_path):
             make_command = get_make_command(args)
             print("Running {}".format(" ".join(make_command)), flush=True)
             try:
-                subprocess.check_call(["taskpolicy", "--background", "no", "--"] + make_command, env=dict(os.environ, PATH=new_path))
+                subprocess.check_call(["taskpolicy", "-a"] + make_command, env=dict(os.environ, PATH=new_path))
             except subprocess.CalledProcessError:
                 print("Error while running make after rebuilding with a single job. Please report this issue if you " \
                       "cannot fix it after reading the README.", flush=True)
