@@ -111,8 +111,10 @@ def get_kicad_paths_for_signing(dotapp_path):
     to_sign.append(os.path.join(dotapp_path, "Contents/MacOS/idf2vrml"))
     to_sign.append(os.path.join(dotapp_path, "Contents/MacOS/idfcyl"))
     to_sign.append(os.path.join(dotapp_path, "Contents/MacOS/idfrect"))
-    to_sign.append(os.path.join(dotapp_path, "Contents/MacOS/kicad-cli"))
-    to_sign.append(os.path.join(dotapp_path, "Contents/MacOS/kicad"))
+    # The main executables are renamed copperai-cli / copperai by the fork's
+    # OUTPUT_NAME (KICAD_APP_NAME=CopperAI); the bundle has no kicad/kicad-cli.
+    to_sign.append(os.path.join(dotapp_path, "Contents/MacOS/copperai-cli"))
+    to_sign.append(os.path.join(dotapp_path, "Contents/MacOS/copperai"))
 
     to_sign.append(dotapp_path)
 
@@ -129,6 +131,7 @@ def sign(dotapp_path, key_label, hardened_runtime, secure_timestamp, entitlement
 
 
 def sign_file(path, key_label, hardened_runtime, secure_timestamp, entitlements_path=None):
+    path = os.path.realpath(path)
     cmd = ["codesign", "--sign", key_label, "--force"]
     if hardened_runtime:
         cmd.extend(["--options", "runtime"])
